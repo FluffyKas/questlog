@@ -1,19 +1,19 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
-const client = new Anthropic();
-
 export async function POST(request: Request) {
-  const { task } = await request.json();
+  try {
+    const { task } = await request.json();
 
-  if (!task || typeof task !== 'string') {
-    return NextResponse.json({ error: 'Task description required' }, { status: 400 });
-  }
+    if (!task || typeof task !== 'string') {
+      return NextResponse.json({ error: 'Task description required' }, { status: 400 });
+    }
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 300,
-    system: `You generate quest text for a gamified RPG productivity app called QuestLog. Users turn real-life tasks into quests.
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 300,
+      system: `You generate quest text for a gamified RPG productivity app called QuestLog. Users turn real-life tasks into quests.
 
 Given a brief task description, produce:
 - title: A short, creative RPG-style quest name (modern English, not old English). Keep it punchy (2-5 words).
@@ -22,22 +22,25 @@ Given a brief task description, produce:
 
 Respond ONLY with valid JSON in this exact format:
 {"title":"...","description":"...","flavorText":"..."}`,
-    messages: [{ role: 'user', content: `Task: ${task}` }],
-  });
+      messages: [{ role: 'user', content: `Task: ${task}` }],
+    });
 
-  const textBlock = response.content.find(b => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    return NextResponse.json({ error: 'No response generated' }, { status: 500 });
-  }
+    const textBlock = response.content.find(b => b.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') {
+      return NextResponse.json({ error: 'No response generated' }, { status: 500 });
+    }
 
-  let raw = textBlock.text.trim();
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) raw = fenceMatch[1].trim();
+    let raw = textBlock.text.trim();
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) raw = fenceMatch[1].trim();
 
-  try {
-    const parsed = JSON.parse(raw);
-    return NextResponse.json(parsed);
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse response', raw }, { status: 500 });
+    try {
+      const parsed = JSON.parse(raw);
+      return NextResponse.json(parsed);
+    } catch {
+      return NextResponse.json({ error: 'Failed to parse response', raw }, { status: 500 });
+    }
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
