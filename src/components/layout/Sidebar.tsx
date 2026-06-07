@@ -75,7 +75,7 @@ export function Sidebar() {
             active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
             transition-transform duration-75 hover:brightness-110"
         >
-          Start Quest
+          + New Quest
         </Link>
         <button
           onClick={() => logout()}
