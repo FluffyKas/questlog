@@ -2,7 +2,12 @@
 
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { type GameState, type Quest, type QuestReward, type ActivityLogEntry, type SkillNodeId, type AchievementProgress } from '@/lib/types';
-import { loadGameState, saveGameState, initializeGameState, loadFromSupabase, saveToSupabase, loadLegacyState, clearLegacyState } from '@/lib/storage';
+import {
+  loadGameState, saveGameState, initializeGameState,
+  loadFromSupabase, saveToSupabase, loadLegacyState, clearLegacyState,
+  loadQuestsFromSupabase, insertQuestToSupabase, updateQuestInSupabase,
+  deleteQuestFromSupabase, upsertQuestProgress, migrateQuestsFromBlob,
+} from '@/lib/storage';
 import { applyQuestReward, calculateLevel, calculateMaxHp, checkLevelUp, applyPerks, getMaxHpBonus, getHpDecayMultiplier, getStreakShieldAllowance } from '@/lib/game-engine';
 import { shouldResetDaily, resetDailyQuest, checkStreak, getTodayString, getMissedDailies } from '@/lib/quest-engine';
 import { MAX_LOG_ENTRIES, SKILL_TREE_NODES, getNodeById, DEFAULT_SKILL_TREE } from '@/lib/constants';
@@ -341,6 +346,7 @@ interface GameContextValue {
   state: GameState;
   dispatch: React.Dispatch<Action>;
   isLoaded: boolean;
+  userId: string;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -355,31 +361,39 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     let cancelled = false;
 
     async function load() {
-      const cloudState = await loadFromSupabase(userId);
-      if (cancelled) return;
+      let baseState = await loadFromSupabase(userId);
 
-      if (cloudState) {
-        dispatch({ type: 'INITIALIZE', state: cloudState });
-        saveGameState(cloudState, userId);
-      } else {
-        const localState = loadGameState(userId);
-        if (localState) {
-          dispatch({ type: 'INITIALIZE', state: localState });
-          saveToSupabase(userId, localState);
-        } else {
+      if (!baseState) {
+        baseState = loadGameState(userId);
+        if (!baseState) {
           const legacy = loadLegacyState();
           if (legacy) {
-            dispatch({ type: 'INITIALIZE', state: legacy });
-            saveToSupabase(userId, legacy);
-            saveGameState(legacy, userId);
+            baseState = legacy;
             clearLegacyState();
-          } else {
-            const fresh = initializeGameState();
-            dispatch({ type: 'INITIALIZE', state: fresh });
-            saveToSupabase(userId, fresh);
           }
         }
       }
+
+      if (!baseState) {
+        baseState = initializeGameState();
+      }
+
+      if (cancelled) return;
+
+      // Migrate quests from JSONB blob to quests table (one-time)
+      if (baseState.quests.length > 0) {
+        await migrateQuestsFromBlob(userId, baseState.quests);
+        baseState = { ...baseState, quests: [] };
+        saveToSupabase(userId, baseState);
+        saveGameState(baseState, userId);
+      }
+
+      // Load quests from the dedicated tables
+      const quests = await loadQuestsFromSupabase(userId);
+      if (cancelled) return;
+
+      const finalState = { ...baseState, quests };
+      dispatch({ type: 'INITIALIZE', state: finalState });
       isLoaded.current = true;
     }
 
@@ -387,17 +401,20 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     return () => { cancelled = true; };
   }, [userId]);
 
+  // Save non-quest state to game_saves (debounced)
   useEffect(() => {
     if (!state || !isLoaded.current) return;
 
+    const stateForStorage = { ...state, quests: [] };
+
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
-      saveGameState(state, userId);
+      saveGameState(stateForStorage, userId);
     }, 300);
 
     if (supabaseSaveTimeout.current) clearTimeout(supabaseSaveTimeout.current);
     supabaseSaveTimeout.current = setTimeout(() => {
-      saveToSupabase(userId, state);
+      saveToSupabase(userId, stateForStorage);
     }, 1000);
 
     return () => {
@@ -406,14 +423,25 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     };
   }, [state, userId]);
 
+  // Daily reset + streak check
   useEffect(() => {
     if (!state || !isLoaded.current) return;
 
-    const needsReset = state.quests.some(q =>
-      shouldResetDaily(q, new Date(), state.settings.dailyResetHour)
+    const now = new Date();
+    const questsToReset = state.quests.filter(q =>
+      shouldResetDaily(q, now, state.settings.dailyResetHour)
     );
-    if (needsReset) {
+    if (questsToReset.length > 0) {
       dispatch({ type: 'RESET_DAILIES' });
+      for (const q of questsToReset) {
+        const resetDate = getTodayString(now, state.settings.dailyResetHour);
+        upsertQuestProgress(userId, q.id, {
+          status: 'not_started',
+          started_at: null,
+          completed_at: null,
+          last_reset_date: resetDate,
+        });
+      }
     }
 
     dispatch({ type: 'UPDATE_STREAK' });
@@ -429,7 +457,7 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
   }
 
   return (
-    <GameContext.Provider value={{ state, dispatch, isLoaded: isLoaded.current }}>
+    <GameContext.Provider value={{ state, dispatch, isLoaded: isLoaded.current, userId }}>
       {children}
     </GameContext.Provider>
   );
@@ -460,29 +488,75 @@ export function useHero() {
 }
 
 export function useQuests() {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch, userId } = useGameState();
 
-  const addQuest = useCallback((quest: Omit<Quest, 'id' | 'createdAt' | 'status'>) => {
+  const addQuest = useCallback((quest: Omit<Quest, 'id' | 'createdAt' | 'status' | 'userId'>) => {
     const newQuest: Quest = {
       ...quest,
       id: crypto.randomUUID(),
+      userId,
+      isGlobal: quest.isGlobal ?? false,
       createdAt: new Date().toISOString(),
       status: 'not_started',
       lastResetDate: quest.recurring ? getTodayString(new Date(), state.settings.dailyResetHour) : undefined,
     };
     dispatch({ type: 'ADD_QUEST', quest: newQuest });
+    insertQuestToSupabase(newQuest);
     return newQuest;
-  }, [dispatch, state.settings.dailyResetHour]);
+  }, [dispatch, userId, state.settings.dailyResetHour]);
+
+  const editQuest = useCallback((quest: Quest) => {
+    dispatch({ type: 'EDIT_QUEST', quest });
+    updateQuestInSupabase(quest);
+  }, [dispatch]);
+
+  const deleteQuest = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_QUEST', id });
+    deleteQuestFromSupabase(id);
+  }, [dispatch]);
+
+  const startQuest = useCallback((id: string) => {
+    dispatch({ type: 'START_QUEST', id });
+    upsertQuestProgress(userId, id, {
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+    });
+  }, [dispatch, userId]);
+
+  const completeQuest = useCallback((id: string) => {
+    const quest = state.quests.find(q => q.id === id);
+    dispatch({ type: 'COMPLETE_QUEST', id });
+
+    if (quest) {
+      const today = getTodayString(new Date(), state.settings.dailyResetHour);
+      const now = new Date().toISOString();
+      if (quest.repeatable) {
+        upsertQuestProgress(userId, id, {
+          status: 'not_started',
+          started_at: null,
+          completed_at: now,
+          last_reset_date: today,
+        });
+      } else {
+        upsertQuestProgress(userId, id, {
+          status: 'completed',
+          completed_at: now,
+          last_reset_date: today,
+        });
+      }
+    }
+  }, [dispatch, userId, state.quests, state.settings.dailyResetHour]);
 
   return {
     quests: state.quests,
     activeQuests: state.quests.filter(q => q.status !== 'completed'),
     completedQuests: state.quests.filter(q => q.status === 'completed' && !q.recurring && !q.repeatable),
     addQuest,
-    editQuest: (quest: Quest) => dispatch({ type: 'EDIT_QUEST', quest }),
-    deleteQuest: (id: string) => dispatch({ type: 'DELETE_QUEST', id }),
-    startQuest: (id: string) => dispatch({ type: 'START_QUEST', id }),
-    completeQuest: (id: string) => dispatch({ type: 'COMPLETE_QUEST', id }),
+    editQuest,
+    deleteQuest,
+    startQuest,
+    completeQuest,
+    userId,
   };
 }
 

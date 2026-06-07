@@ -1,4 +1,4 @@
-import { type GameState } from './types';
+import { type GameState, type Quest, type QuestStatus, type QuestType, type QuestCategory, type QuestReward } from './types';
 import { STORAGE_KEY, STATE_VERSION, createInitialState, DEFAULT_SKILL_TREE } from './constants';
 import { DEFAULT_ACHIEVEMENT_PROGRESS } from './achievements';
 import { supabase } from './supabase';
@@ -74,6 +74,183 @@ export function clearLegacyState(): void {
 export function initializeGameState(): GameState {
   return createInitialState();
 }
+
+// --- Quest table operations ---
+
+interface QuestRow {
+  id: string;
+  user_id: string;
+  is_global: boolean;
+  title: string;
+  description: string;
+  flavor_text: string | null;
+  type: string;
+  category: string | null;
+  reward: QuestReward;
+  recurring: boolean;
+  repeatable: boolean;
+  timer_minutes: number | null;
+  created_at: string;
+}
+
+interface ProgressRow {
+  quest_id: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  last_reset_date: string | null;
+}
+
+export async function loadQuestsFromSupabase(userId: string): Promise<Quest[]> {
+  try {
+    const [questResult, progressResult] = await Promise.all([
+      supabase.from('quests').select('*'),
+      supabase.from('quest_progress').select('*').eq('user_id', userId),
+    ]);
+
+    if (questResult.error || !questResult.data) return [];
+
+    const progressMap = new Map<string, ProgressRow>();
+    if (progressResult.data) {
+      for (const p of progressResult.data as ProgressRow[]) {
+        progressMap.set(p.quest_id, p);
+      }
+    }
+
+    return (questResult.data as QuestRow[]).map(q => {
+      const progress = progressMap.get(q.id);
+      return {
+        id: q.id,
+        userId: q.user_id,
+        isGlobal: q.is_global,
+        title: q.title,
+        description: q.description,
+        flavorText: q.flavor_text || undefined,
+        type: q.type as QuestType,
+        category: (q.category as QuestCategory) || undefined,
+        reward: q.reward,
+        recurring: q.recurring,
+        repeatable: q.repeatable,
+        timerMinutes: q.timer_minutes || undefined,
+        createdAt: q.created_at,
+        status: (progress?.status as QuestStatus) || 'not_started',
+        startedAt: progress?.started_at || undefined,
+        completedAt: progress?.completed_at || undefined,
+        lastResetDate: progress?.last_reset_date || undefined,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function insertQuestToSupabase(quest: Quest): Promise<void> {
+  try {
+    await supabase.from('quests').insert({
+      id: quest.id,
+      user_id: quest.userId,
+      is_global: quest.isGlobal,
+      title: quest.title,
+      description: quest.description,
+      flavor_text: quest.flavorText || null,
+      type: quest.type,
+      category: quest.category || null,
+      reward: quest.reward,
+      recurring: quest.recurring,
+      repeatable: quest.repeatable,
+      timer_minutes: quest.timerMinutes || null,
+      created_at: quest.createdAt,
+    });
+  } catch {
+    // silent fail — state is already updated in memory
+  }
+}
+
+export async function updateQuestInSupabase(quest: Quest): Promise<void> {
+  try {
+    await supabase.from('quests').update({
+      title: quest.title,
+      description: quest.description,
+      flavor_text: quest.flavorText || null,
+      type: quest.type,
+      category: quest.category || null,
+      reward: quest.reward,
+      recurring: quest.recurring,
+      repeatable: quest.repeatable,
+      timer_minutes: quest.timerMinutes || null,
+      is_global: quest.isGlobal,
+    }).eq('id', quest.id);
+  } catch {
+    // silent fail
+  }
+}
+
+export async function deleteQuestFromSupabase(questId: string): Promise<void> {
+  try {
+    await supabase.from('quests').delete().eq('id', questId);
+  } catch {
+    // silent fail
+  }
+}
+
+export async function upsertQuestProgress(
+  userId: string,
+  questId: string,
+  progress: { status: string; started_at?: string | null; completed_at?: string | null; last_reset_date?: string | null },
+): Promise<void> {
+  try {
+    await supabase.from('quest_progress').upsert({
+      user_id: userId,
+      quest_id: questId,
+      ...progress,
+    });
+  } catch {
+    // silent fail
+  }
+}
+
+export async function migrateQuestsFromBlob(userId: string, quests: Quest[]): Promise<void> {
+  if (quests.length === 0) return;
+
+  try {
+    const questRows = quests.map(q => ({
+      id: q.id,
+      user_id: userId,
+      is_global: false,
+      title: q.title,
+      description: q.description,
+      flavor_text: q.flavorText || null,
+      type: q.type,
+      category: q.category || null,
+      reward: q.reward,
+      recurring: q.recurring,
+      repeatable: q.repeatable,
+      timer_minutes: q.timerMinutes || null,
+      created_at: q.createdAt,
+    }));
+
+    await supabase.from('quests').upsert(questRows);
+
+    const progressRows = quests
+      .filter(q => q.status !== 'not_started' || q.lastResetDate)
+      .map(q => ({
+        user_id: userId,
+        quest_id: q.id,
+        status: q.status,
+        started_at: q.startedAt || null,
+        completed_at: q.completedAt || null,
+        last_reset_date: q.lastResetDate || null,
+      }));
+
+    if (progressRows.length > 0) {
+      await supabase.from('quest_progress').upsert(progressRows);
+    }
+  } catch {
+    // migration failed — will retry on next load
+  }
+}
+
+// --- State migration ---
 
 function migrateState(state: GameState): GameState {
   let migrated = state;

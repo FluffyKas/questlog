@@ -55,6 +55,8 @@ export interface QuestReward {
 
 export interface Quest {
   id: string;
+  userId?: string;
+  isGlobal: boolean;
   title: string;
   description: string;
   flavorText?: string;

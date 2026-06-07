@@ -39,6 +39,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   const [category, setCategory] = useState<QuestCategory | ''>(existingQuest?.category ?? '');
   const [statBonus, setStatBonus] = useState<StatName | ''>('');
   const [statValue, setStatValue] = useState(0);
+  const [isGlobal, setIsGlobal] = useState(existingQuest?.isGlobal ?? true);
   const [taskInput, setTaskInput] = useState('');
   const [generating, setGenerating] = useState(false);
 
@@ -88,6 +89,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         recurring,
         repeatable,
         timerMinutes: timerMinutes || undefined,
+        isGlobal,
       });
     } else {
       addQuest({
@@ -100,6 +102,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         recurring,
         repeatable,
         timerMinutes: timerMinutes || undefined,
+        isGlobal,
       });
     }
 
@@ -262,6 +265,25 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
           <span className="font-mono text-xs uppercase text-on-surface-variant">
             Repeatable (available again after completing)
           </span>
+        </label>
+      </div>
+
+      <div className="border-2 border-outline-variant bg-surface-container p-3">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isGlobal}
+            onChange={e => setIsGlobal(e.target.checked)}
+            className="w-5 h-5 accent-primary bg-surface-lowest"
+          />
+          <div>
+            <span className="font-mono text-xs uppercase text-on-surface-variant block">
+              Shared Quest
+            </span>
+            <span className="font-mono text-[10px] text-outline">
+              {isGlobal ? 'Visible to all adventurers' : 'Only visible to you'}
+            </span>
+          </div>
         </label>
       </div>
 

@@ -10,7 +10,7 @@ type TypeFilter = 'all' | QuestType | 'completed';
 type CategoryFilter = 'all' | QuestCategory;
 
 export default function QuestsPage() {
-  const { quests, deleteQuest } = useQuests();
+  const { quests, deleteQuest, userId } = useQuests();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
 
@@ -102,26 +102,28 @@ export default function QuestsPage() {
           {filtered.map(quest => (
             <div key={quest.id} className="group relative">
               <QuestCard quest={quest} />
-              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Link
-                  href={`/quests/new?id=${quest.id}`}
-                  className="text-on-surface-variant text-xs font-mono px-1.5 py-0.5
-                    bg-surface-high border border-outline-variant cursor-pointer
-                    hover:bg-surface-highest"
-                  title="Edit quest"
-                >
-                  ✎
-                </Link>
-                <button
-                  onClick={() => deleteQuest(quest.id)}
-                  className="text-error text-xs font-mono px-1.5 py-0.5
-                    bg-surface-high border border-outline-variant cursor-pointer
-                    hover:bg-error-container"
-                  title="Delete quest"
-                >
-                  ✕
-                </button>
-              </div>
+              {quest.userId === userId && (
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link
+                    href={`/quests/new?id=${quest.id}`}
+                    className="text-on-surface-variant text-xs font-mono px-1.5 py-0.5
+                      bg-surface-high border border-outline-variant cursor-pointer
+                      hover:bg-surface-highest"
+                    title="Edit quest"
+                  >
+                    ✎
+                  </Link>
+                  <button
+                    onClick={() => deleteQuest(quest.id)}
+                    className="text-error text-xs font-mono px-1.5 py-0.5
+                      bg-surface-high border border-outline-variant cursor-pointer
+                      hover:bg-error-container"
+                    title="Delete quest"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
