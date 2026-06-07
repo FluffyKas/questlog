@@ -8,6 +8,16 @@ import { QUEST_TYPE_CONFIG, STAT_LABELS } from '@/lib/constants';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 
+async function generateQuestText(task: string) {
+  const res = await fetch('/api/generate-quest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task }),
+  });
+  if (!res.ok) throw new Error('Generation failed');
+  return res.json() as Promise<{ title: string; description: string; flavorText: string }>;
+}
+
 interface QuestFormProps {
   existingQuest?: Quest;
 }
@@ -29,6 +39,23 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   const [category, setCategory] = useState<QuestCategory | ''>(existingQuest?.category ?? '');
   const [statBonus, setStatBonus] = useState<StatName | ''>('');
   const [statValue, setStatValue] = useState(0);
+  const [taskInput, setTaskInput] = useState('');
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerate() {
+    if (!taskInput.trim()) return;
+    setGenerating(true);
+    try {
+      const result = await generateQuestText(taskInput.trim());
+      setTitle(result.title);
+      setDescription(result.description);
+      setFlavorText(result.flavorText);
+    } catch {
+      // silently fail — user can fill in manually
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function handleTypeChange(type: QuestType) {
     setQuestType(type);
@@ -81,6 +108,40 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+      {!isEditing && (
+        <div className="border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
+          <label className="font-display text-xs uppercase tracking-wider text-primary block">
+            AI Quest Generator
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Describe your task briefly... (e.g. do laundry)"
+              value={taskInput}
+              onChange={e => setTaskInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleGenerate(); } }}
+              className="flex-1 px-3 py-2 bg-surface-lowest border-2 border-outline-variant
+                font-body text-sm text-on-surface placeholder:text-outline
+                focus:outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating || !taskInput.trim()}
+              className="px-4 py-2 bg-primary text-on-primary font-display text-xs
+                uppercase tracking-wider border-2 border-primary-container
+                disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer
+                hover:brightness-110 transition-all"
+            >
+              {generating ? '...' : 'Generate'}
+            </button>
+          </div>
+          <p className="font-mono text-[10px] text-outline">
+            Generates title, description &amp; flavor text from a short task description
+          </p>
+        </div>
+      )}
+
       <Input
         label="Quest Title"
         placeholder="Enter quest name..."

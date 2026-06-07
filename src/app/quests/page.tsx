@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuests } from '@/components/providers/GameProvider';
 import { QuestCard } from '@/components/dashboard/QuestCard';
-import { Button } from '@/components/ui/Button';
 import { type QuestType, type QuestCategory } from '@/lib/types';
 
 type TypeFilter = 'all' | QuestType | 'completed';
@@ -44,13 +43,10 @@ export default function QuestsPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="font-display text-xl uppercase tracking-wider">
           <span className="text-primary">📜</span> Quest Log
         </h1>
-        <Link href="/quests/new">
-          <Button size="md">+ New Quest</Button>
-        </Link>
       </div>
 
       <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
