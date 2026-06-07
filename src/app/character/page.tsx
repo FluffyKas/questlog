@@ -1,14 +1,25 @@
 'use client';
 
+import { useState } from 'react';
 import { useHero, useGameState, useAchievements } from '@/components/providers/GameProvider';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Button } from '@/components/ui/Button';
 import { STAT_LABELS } from '@/lib/constants';
 import { type StatName } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
 
 export default function CharacterPage() {
   const { hero, xpPercent, xpIntoCurrentLevel, xpForCurrentLevel, hpPercent } = useHero();
-  const { state } = useGameState();
+  const { state, dispatch, userId } = useGameState();
+  const { user } = useAuth();
   const { unlockedTitles, setTitle } = useAchievements();
+
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const totalCompleted = state.quests.filter(q => q.status === 'completed').length;
 
@@ -96,7 +107,7 @@ export default function CharacterPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="border-2 border-outline-variant bg-surface-container shadow-md p-6">
+      <div className="border-2 border-outline-variant bg-surface-container shadow-md p-6 mb-6">
         <h3 className="font-display text-sm uppercase tracking-wider text-on-surface-variant mb-4">
           Adventure Stats
         </h3>
@@ -117,6 +128,99 @@ export default function CharacterPage() {
             <p className="font-display text-2xl text-mana">{state.streak.longest}</p>
             <p className="font-mono text-[10px] uppercase text-on-surface-variant">Best Streak</p>
           </div>
+        </div>
+      </div>
+
+      {/* Account Settings */}
+      <div className="border-2 border-outline-variant bg-surface-container shadow-md p-6">
+        <h3 className="font-display text-sm uppercase tracking-wider text-on-surface-variant mb-4">
+          Account
+        </h3>
+
+        <p className="font-mono text-xs text-outline mb-4">{user?.email}</p>
+
+        {/* Change Password */}
+        <div className="mb-6">
+          <label className="font-mono text-xs uppercase text-on-surface-variant block mb-2">
+            Change Password
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="flex-1 px-3 py-2 bg-surface-lowest border-2 border-outline-variant
+                font-body text-sm text-on-surface placeholder:text-outline
+                focus:outline-none focus:border-primary"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={changingPassword || newPassword.length < 6}
+              onClick={async () => {
+                setChangingPassword(true);
+                setPasswordMsg(null);
+                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                if (error) {
+                  setPasswordMsg({ text: error.message, error: true });
+                } else {
+                  setPasswordMsg({ text: 'Password updated!', error: false });
+                  setNewPassword('');
+                }
+                setChangingPassword(false);
+              }}
+            >
+              {changingPassword ? '...' : 'Update'}
+            </Button>
+          </div>
+          {passwordMsg && (
+            <p className={`font-mono text-[10px] mt-1 ${passwordMsg.error ? 'text-error' : 'text-xp'}`}>
+              {passwordMsg.text}
+            </p>
+          )}
+        </div>
+
+        {/* Reset Profile */}
+        <div className="border-t-2 border-outline-variant pt-4">
+          <label className="font-mono text-xs uppercase text-on-surface-variant block mb-2">
+            Danger Zone
+          </label>
+          {!confirmReset ? (
+            <Button size="sm" variant="ghost" onClick={() => setConfirmReset(true)}>
+              Reset Profile
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <p className="font-body text-xs text-error">
+                This will reset your hero, stats, achievements, streak, and all quest progress back to zero. Quest definitions will be kept. This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={resetting}
+                  onClick={async () => {
+                    setResetting(true);
+                    await supabase.from('quest_progress').delete().eq('user_id', userId);
+
+                    const { initializeGameState, loadQuestsFromSupabase } = await import('@/lib/storage');
+                    const fresh = initializeGameState();
+                    const quests = await loadQuestsFromSupabase(userId);
+                    dispatch({ type: 'RESET_PROFILE', state: { ...fresh, quests } });
+
+                    setConfirmReset(false);
+                    setResetting(false);
+                  }}
+                >
+                  {resetting ? 'Resetting...' : 'Confirm Reset'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

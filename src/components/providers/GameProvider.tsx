@@ -27,7 +27,8 @@ type Action =
   | { type: 'APPLY_HP_DECAY'; amount: number }
   | { type: 'UNLOCK_SKILL_NODE'; nodeId: SkillNodeId }
   | { type: 'CHECK_ACHIEVEMENTS' }
-  | { type: 'SET_TITLE'; title: string };
+  | { type: 'SET_TITLE'; title: string }
+  | { type: 'RESET_PROFILE'; state: GameState };
 
 function createLogEntry(message: string, logType: ActivityLogEntry['type']): ActivityLogEntry {
   return {
@@ -336,6 +337,9 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'SET_TITLE':
       return { ...state, hero: { ...state.hero, title: action.title || undefined } };
+
+    case 'RESET_PROFILE':
+      return action.state;
 
     default:
       return state;
