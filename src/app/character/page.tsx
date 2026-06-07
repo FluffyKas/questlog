@@ -33,7 +33,7 @@ export default function CharacterPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-2xl">
+    <div className="p-4 md:p-6 lg:p-8 max-w-2xl mx-auto">
       <h1 className="font-display text-xl uppercase tracking-wider mb-6">
         <span className="text-primary">👤</span> Character Sheet
       </h1>

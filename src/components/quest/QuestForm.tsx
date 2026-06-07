@@ -35,7 +35,9 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   const [gold, setGold] = useState(existingQuest?.reward.gold ?? QUEST_TYPE_CONFIG.daily.defaultGold);
   const [recurring, setRecurring] = useState(existingQuest?.recurring ?? false);
   const [repeatable, setRepeatable] = useState(existingQuest?.repeatable ?? false);
-  const [timerMinutes, setTimerMinutes] = useState(existingQuest?.timerMinutes ?? 0);
+  const [repeatIntervalDays, setRepeatIntervalDays] = useState(existingQuest?.repeatIntervalDays ?? 0);
+  const [repeatTimeLimitDays, setRepeatTimeLimitDays] = useState(existingQuest?.repeatTimeLimitDays ?? 0);
+  const [timerDays, setTimerDays] = useState(existingQuest?.timerDays ?? 0);
   const [category, setCategory] = useState<QuestCategory | ''>(existingQuest?.category ?? '');
   const [statBonus, setStatBonus] = useState<StatName | ''>('');
   const [statValue, setStatValue] = useState(0);
@@ -88,7 +90,9 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         reward,
         recurring,
         repeatable,
-        timerMinutes: timerMinutes || undefined,
+        repeatIntervalDays: repeatIntervalDays || undefined,
+        repeatTimeLimitDays: repeatTimeLimitDays || undefined,
+        timerDays: timerDays || undefined,
         isGlobal,
       });
     } else {
@@ -101,7 +105,9 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         reward,
         recurring,
         repeatable,
-        timerMinutes: timerMinutes || undefined,
+        repeatIntervalDays: repeatIntervalDays || undefined,
+        repeatTimeLimitDays: repeatTimeLimitDays || undefined,
+        timerDays: timerDays || undefined,
         isGlobal,
       });
     }
@@ -110,7 +116,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto">
       {!isEditing && (
         <div className="border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
           <label className="font-display text-xs uppercase tracking-wider text-primary block">
@@ -232,23 +238,12 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         )}
       </div>
 
-      {questType === 'daily' && (
-        <Input
-          label="Timer (minutes, optional)"
-          type="number"
-          min={0}
-          value={timerMinutes}
-          onChange={e => setTimerMinutes(Number(e.target.value))}
-          placeholder="0"
-        />
-      )}
-
       <div className="space-y-2">
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={recurring}
-            onChange={e => { setRecurring(e.target.checked); if (e.target.checked) setRepeatable(false); }}
+            onChange={e => { setRecurring(e.target.checked); if (e.target.checked) { setRepeatable(false); setRepeatIntervalDays(0); } }}
             className="w-5 h-5 accent-primary bg-surface-lowest"
           />
           <span className="font-mono text-xs uppercase text-on-surface-variant">
@@ -259,7 +254,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
           <input
             type="checkbox"
             checked={repeatable}
-            onChange={e => { setRepeatable(e.target.checked); if (e.target.checked) setRecurring(false); }}
+            onChange={e => { setRepeatable(e.target.checked); if (e.target.checked) { setRecurring(false); setRepeatIntervalDays(0); } }}
             className="w-5 h-5 accent-primary bg-surface-lowest"
           />
           <span className="font-mono text-xs uppercase text-on-surface-variant">
@@ -267,6 +262,48 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
           </span>
         </label>
       </div>
+
+      {!recurring && !repeatable && (
+        <div className="border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
+          <label className="font-display text-xs uppercase tracking-wider text-primary block">
+            Scheduled Repeat
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Repeat every (days)"
+              type="number"
+              min={0}
+              value={repeatIntervalDays}
+              onChange={e => setRepeatIntervalDays(Number(e.target.value))}
+              placeholder="0"
+            />
+            <Input
+              label="Time limit (days)"
+              type="number"
+              min={0}
+              value={repeatTimeLimitDays}
+              onChange={e => setRepeatTimeLimitDays(Number(e.target.value))}
+              placeholder="0"
+            />
+          </div>
+          <p className="font-mono text-[10px] text-outline">
+            {repeatIntervalDays > 0
+              ? `Reappears every ${repeatIntervalDays} day(s) after completion${repeatTimeLimitDays > 0 ? `, ${repeatTimeLimitDays} day(s) to finish` : ''}`
+              : 'Set an interval to make this quest repeat on a schedule'}
+          </p>
+        </div>
+      )}
+
+      {!repeatIntervalDays && !recurring && !repeatable && (
+        <Input
+          label="Time Limit (days, optional)"
+          type="number"
+          min={0}
+          value={timerDays}
+          onChange={e => setTimerDays(Number(e.target.value))}
+          placeholder="0"
+        />
+      )}
 
       <div className="border-2 border-outline-variant bg-surface-container p-3">
         <label className="flex items-center gap-3 cursor-pointer">

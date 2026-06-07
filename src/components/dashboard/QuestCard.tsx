@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useQuests } from '@/components/providers/GameProvider';
 import { QUEST_TYPE_CONFIG, QUEST_CATEGORY_CONFIG } from '@/lib/constants';
+import { daysRemaining } from '@/lib/quest-engine';
 
 interface QuestCardProps {
   quest: Quest;
@@ -47,11 +48,14 @@ export function QuestCard({ quest }: QuestCardProps) {
         ))}
       </div>
 
-      {(quest.timerMinutes || quest.repeatable || quest.recurring) && quest.status !== 'completed' && (
+      {(quest.deadline || quest.repeatable || quest.recurring || quest.repeatIntervalDays) && quest.status !== 'completed' && (
         <p className="font-mono text-[10px] text-outline mb-2">
-          {quest.timerMinutes ? `⏱ ${quest.timerMinutes} min` : ''}
-          {quest.timerMinutes && (quest.repeatable || quest.recurring) ? ' · ' : ''}
-          {quest.recurring ? '☀ Daily' : quest.repeatable ? '🔄 Repeatable' : ''}
+          {quest.deadline ? (() => {
+            const days = daysRemaining(quest.deadline);
+            return days > 0 ? `⏱ ${days}d left` : '⏱ Overdue';
+          })() : ''}
+          {quest.deadline && (quest.repeatable || quest.recurring || quest.repeatIntervalDays) ? ' · ' : ''}
+          {quest.recurring ? '☀ Daily' : quest.repeatable ? '🔄 Repeatable' : quest.repeatIntervalDays ? `🔁 Every ${quest.repeatIntervalDays}d` : ''}
         </p>
       )}
 

@@ -109,7 +109,7 @@ export function applyPerks(
         if (quest.category === perk.branch) bonusHp += perk.amount;
         break;
       case 'timer_xp_multiplier':
-        if (quest.category === perk.branch && quest.timerMinutes && quest.timerMinutes > 0)
+        if (quest.category === perk.branch && quest.timerDays && quest.timerDays > 0)
           xpMultiplier += perk.multiplier;
         break;
       case 'hp_on_complete_chance':

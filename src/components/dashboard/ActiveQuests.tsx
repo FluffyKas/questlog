@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/Button';
 export function ActiveQuests() {
   const { quests } = useQuests();
   const active = quests.filter(q => q.status === 'in_progress');
+  const recurring = quests.filter(q =>
+    q.status === 'not_started' && q.repeatIntervalDays
+  );
 
   return (
     <div>
@@ -28,6 +31,19 @@ export function ActiveQuests() {
           {active.map(quest => (
             <QuestCard key={quest.id} quest={quest} />
           ))}
+        </div>
+      )}
+
+      {recurring.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-display text-lg uppercase tracking-wider text-on-surface mb-4 flex items-center gap-2">
+            <span className="text-primary">🔁</span> Recurring Quests
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {recurring.map(quest => (
+              <QuestCard key={quest.id} quest={quest} />
+            ))}
+          </div>
         </div>
       )}
     </div>

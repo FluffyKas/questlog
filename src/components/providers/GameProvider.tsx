@@ -9,7 +9,7 @@ import {
   deleteQuestFromSupabase, upsertQuestProgress, migrateQuestsFromBlob,
 } from '@/lib/storage';
 import { applyQuestReward, calculateLevel, calculateMaxHp, checkLevelUp, applyPerks, getMaxHpBonus, getHpDecayMultiplier, getStreakShieldAllowance } from '@/lib/game-engine';
-import { shouldResetDaily, resetDailyQuest, checkStreak, getTodayString, getMissedDailies } from '@/lib/quest-engine';
+import { shouldResetDaily, resetDailyQuest, checkStreak, getTodayString, getMissedDailies, getExpiredQuests, getQuestsDueForReactivation, reactivateQuest } from '@/lib/quest-engine';
 import { MAX_LOG_ENTRIES, SKILL_TREE_NODES, getNodeById, DEFAULT_SKILL_TREE } from '@/lib/constants';
 import { ACHIEVEMENTS, getNewlyUnlocked, DEFAULT_ACHIEVEMENT_PROGRESS } from '@/lib/achievements';
 
@@ -28,7 +28,9 @@ type Action =
   | { type: 'UNLOCK_SKILL_NODE'; nodeId: SkillNodeId }
   | { type: 'CHECK_ACHIEVEMENTS' }
   | { type: 'SET_TITLE'; title: string }
-  | { type: 'RESET_PROFILE'; state: GameState };
+  | { type: 'RESET_PROFILE'; state: GameState }
+  | { type: 'EXPIRE_QUESTS'; questIds: string[] }
+  | { type: 'REACTIVATE_QUESTS'; quests: Quest[] };
 
 function createLogEntry(message: string, logType: ActivityLogEntry['type']): ActivityLogEntry {
   return {
@@ -338,8 +340,49 @@ function gameReducer(state: GameState, action: Action): GameState {
     case 'SET_TITLE':
       return { ...state, hero: { ...state.hero, title: action.title || undefined } };
 
+    case 'REACTIVATE_QUESTS': {
+      const reactivatedNames = action.quests.map(q => q.title);
+      let log = state.activityLog;
+      log = addLog(log, createLogEntry(
+        `Recurring quest(s) reactivated: ${reactivatedNames.join(', ')}.`,
+        'system'
+      ));
+
+      const reactivatedMap = new Map(action.quests.map(q => [q.id, q]));
+      return {
+        ...state,
+        quests: state.quests.map(q => reactivatedMap.get(q.id) ?? q),
+        activityLog: log,
+      };
+    }
+
     case 'RESET_PROFILE':
       return action.state;
+
+    case 'EXPIRE_QUESTS': {
+      const hpPenaltyPer = Math.floor(state.hero.maxHp * 0.15);
+      const totalPenalty = hpPenaltyPer * action.questIds.length;
+      const expiredNames = state.quests
+        .filter(q => action.questIds.includes(q.id))
+        .map(q => q.title);
+
+      let log = state.activityLog;
+      log = addLog(log, createLogEntry(
+        `Deadline expired on ${expiredNames.length} quest(s): ${expiredNames.join(', ')}. -${totalPenalty} HP.`,
+        'hp_change'
+      ));
+
+      return {
+        ...state,
+        hero: { ...state.hero, hp: Math.max(0, state.hero.hp - totalPenalty) },
+        quests: state.quests.map(q =>
+          action.questIds.includes(q.id)
+            ? { ...q, deadline: undefined, status: 'not_started' as const, startedAt: undefined }
+            : q
+        ),
+        activityLog: log,
+      };
+    }
 
     default:
       return state;
@@ -449,6 +492,35 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     }
 
     dispatch({ type: 'UPDATE_STREAK' });
+
+    // Reactivate interval-based recurring quests
+    const dueForReactivation = getQuestsDueForReactivation(state.quests);
+    if (dueForReactivation.length > 0) {
+      const reactivated = dueForReactivation.map(reactivateQuest);
+      dispatch({ type: 'REACTIVATE_QUESTS', quests: reactivated });
+      for (const q of reactivated) {
+        updateQuestInSupabase(q);
+        upsertQuestProgress(userId, q.id, {
+          status: 'not_started',
+          started_at: null,
+          completed_at: null,
+        });
+      }
+    }
+
+    // Check for expired quest deadlines
+    const expired = getExpiredQuests(state.quests);
+    if (expired.length > 0) {
+      const expiredIds = expired.map(q => q.id);
+      dispatch({ type: 'EXPIRE_QUESTS', questIds: expiredIds });
+      for (const q of expired) {
+        updateQuestInSupabase({ ...q, deadline: undefined });
+        upsertQuestProgress(userId, q.id, {
+          status: 'not_started',
+          started_at: null,
+        });
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
 
@@ -495,14 +567,22 @@ export function useQuests() {
   const { state, dispatch, userId } = useGameState();
 
   const addQuest = useCallback((quest: Omit<Quest, 'id' | 'createdAt' | 'status' | 'userId'>) => {
+    const now = new Date();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const deadline = quest.repeatTimeLimitDays
+      ? new Date(now.getTime() + quest.repeatTimeLimitDays * DAY_MS).toISOString()
+      : quest.timerDays
+        ? new Date(now.getTime() + quest.timerDays * DAY_MS).toISOString()
+        : undefined;
     const newQuest: Quest = {
       ...quest,
       id: crypto.randomUUID(),
       userId,
       isGlobal: quest.isGlobal ?? false,
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
       status: 'not_started',
-      lastResetDate: quest.recurring ? getTodayString(new Date(), state.settings.dailyResetHour) : undefined,
+      deadline,
+      lastResetDate: quest.recurring ? getTodayString(now, state.settings.dailyResetHour) : undefined,
     };
     dispatch({ type: 'ADD_QUEST', quest: newQuest });
     insertQuestToSupabase(newQuest);

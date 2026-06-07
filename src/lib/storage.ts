@@ -89,7 +89,10 @@ interface QuestRow {
   reward: QuestReward;
   recurring: boolean;
   repeatable: boolean;
-  timer_minutes: number | null;
+  repeat_interval_days: number | null;
+  repeat_time_limit_days: number | null;
+  timer_days: number | null;
+  deadline: string | null;
   created_at: string;
 }
 
@@ -131,7 +134,10 @@ export async function loadQuestsFromSupabase(userId: string): Promise<Quest[]> {
         reward: q.reward,
         recurring: q.recurring,
         repeatable: q.repeatable,
-        timerMinutes: q.timer_minutes || undefined,
+        repeatIntervalDays: q.repeat_interval_days || undefined,
+        repeatTimeLimitDays: q.repeat_time_limit_days || undefined,
+        timerDays: q.timer_days || undefined,
+        deadline: q.deadline || undefined,
         createdAt: q.created_at,
         status: (progress?.status as QuestStatus) || 'not_started',
         startedAt: progress?.started_at || undefined,
@@ -158,7 +164,10 @@ export async function insertQuestToSupabase(quest: Quest): Promise<void> {
       reward: quest.reward,
       recurring: quest.recurring,
       repeatable: quest.repeatable,
-      timer_minutes: quest.timerMinutes || null,
+      repeat_interval_days: quest.repeatIntervalDays || null,
+      repeat_time_limit_days: quest.repeatTimeLimitDays || null,
+      timer_days: quest.timerDays || null,
+      deadline: quest.deadline || null,
       created_at: quest.createdAt,
     });
   } catch {
@@ -177,7 +186,10 @@ export async function updateQuestInSupabase(quest: Quest): Promise<void> {
       reward: quest.reward,
       recurring: quest.recurring,
       repeatable: quest.repeatable,
-      timer_minutes: quest.timerMinutes || null,
+      repeat_interval_days: quest.repeatIntervalDays || null,
+      repeat_time_limit_days: quest.repeatTimeLimitDays || null,
+      timer_days: quest.timerDays || null,
+      deadline: quest.deadline || null,
       is_global: quest.isGlobal,
     }).eq('id', quest.id);
   } catch {
@@ -225,7 +237,10 @@ export async function migrateQuestsFromBlob(userId: string, quests: Quest[]): Pr
       reward: q.reward,
       recurring: q.recurring,
       repeatable: q.repeatable,
-      timer_minutes: q.timerMinutes || null,
+      repeat_interval_days: q.repeatIntervalDays || null,
+      repeat_time_limit_days: q.repeatTimeLimitDays || null,
+      timer_days: q.timerDays || null,
+      deadline: q.deadline || null,
       created_at: q.createdAt,
     }));
 

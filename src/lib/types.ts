@@ -68,9 +68,11 @@ export interface Quest {
   completedAt?: string;
   startedAt?: string;
   deadline?: string;
-  timerMinutes?: number;
+  timerDays?: number;
   recurring: boolean;
   repeatable: boolean;
+  repeatIntervalDays?: number;
+  repeatTimeLimitDays?: number;
   lastResetDate?: string;
 }
 

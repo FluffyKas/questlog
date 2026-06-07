@@ -62,3 +62,46 @@ export function checkStreak(lastActiveDate: string, now: Date, resetHour: number
 export function getTodayString(now: Date, resetHour: number): string {
   return getDateString(now, resetHour);
 }
+
+export function getExpiredQuests(quests: Quest[]): Quest[] {
+  const now = new Date();
+  return quests.filter(q =>
+    q.deadline &&
+    q.status !== 'completed' &&
+    new Date(q.deadline) < now
+  );
+}
+
+export function daysRemaining(deadline: string): number {
+  const diff = new Date(deadline).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+export function getQuestsDueForReactivation(quests: Quest[]): Quest[] {
+  const now = Date.now();
+  const DAY_MS = 1000 * 60 * 60 * 24;
+
+  return quests.filter(q => {
+    if (!q.repeatIntervalDays) return false;
+    if (q.status !== 'completed') return false;
+    if (!q.completedAt) return false;
+
+    const completedTime = new Date(q.completedAt).getTime();
+    const nextActivation = completedTime + q.repeatIntervalDays * DAY_MS;
+    return now >= nextActivation;
+  });
+}
+
+export function reactivateQuest(quest: Quest): Quest {
+  const deadline = quest.repeatTimeLimitDays
+    ? new Date(Date.now() + quest.repeatTimeLimitDays * 24 * 60 * 60 * 1000).toISOString()
+    : undefined;
+
+  return {
+    ...quest,
+    status: 'not_started',
+    startedAt: undefined,
+    completedAt: undefined,
+    deadline,
+  };
+}
