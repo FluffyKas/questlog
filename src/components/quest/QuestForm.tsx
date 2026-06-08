@@ -191,7 +191,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         options={[
           { value: '', label: 'None' },
           { value: 'mind', label: '📘 Mind — Learning, coding, reading' },
-          { value: 'body', label: '💪 Body — Exercise, cleaning, health' },
+          { value: 'body', label: '💪 Body — Exercise, health' },
           { value: 'hearth', label: '🏠 Hearth — Cleaning, chores, organizing' },
         ]}
       />

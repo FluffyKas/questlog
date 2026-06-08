@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useHero } from '@/components/providers/GameProvider';
 import { InventoryGrid } from '@/components/ui/InventoryGrid';
 
@@ -8,8 +9,15 @@ export default function InventoryPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-2xl mx-auto">
-      <h1 className="font-display text-xl uppercase tracking-wider mb-6">
-        <span className="text-primary">🎒</span> Inventory
+      <h1 className="font-display text-xl uppercase tracking-wider mb-6 flex items-center gap-2">
+        <Image
+          src="/icons/inventory_chest.png"
+          alt=""
+          width={28}
+          height={28}
+          className="[image-rendering:pixelated]"
+        />
+        Inventory
       </h1>
 
       {/* Currency */}

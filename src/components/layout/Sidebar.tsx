@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useHero } from '@/components/providers/GameProvider';
@@ -12,7 +13,7 @@ const navItems = [
   { href: '/skills', label: 'Skills', icon: '🌳' },
   { href: '/achievements', label: 'Trophies', icon: '🏆' },
   { href: '/character', label: 'Character', icon: '👤' },
-  { href: '/inventory', label: 'Inventory', icon: '🎒' },
+  { href: '/inventory', label: 'Inventory', icon: null },
 ];
 
 export function Sidebar() {
@@ -59,7 +60,17 @@ export function Sidebar() {
                 }
               `}
             >
-              <span className="text-base">{item.icon}</span>
+              {item.icon ? (
+                <span className="text-base">{item.icon}</span>
+              ) : (
+                <Image
+                  src="/icons/inventory_chest.png"
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="[image-rendering:pixelated]"
+                />
+              )}
               {item.label}
             </Link>
           );
