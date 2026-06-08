@@ -4,7 +4,8 @@ import { type Quest } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useQuests } from '@/components/providers/GameProvider';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { useQuests, useGameState } from '@/components/providers/GameProvider';
 import { QUEST_TYPE_CONFIG, QUEST_CATEGORY_CONFIG } from '@/lib/constants';
 import { daysRemaining } from '@/lib/quest-engine';
 
@@ -18,8 +19,11 @@ const typeToRibbon: Record<string, 'primary' | 'secondary' | 'tertiary'> = {
 };
 
 export function QuestCard({ quest }: QuestCardProps) {
-  const { startQuest, completeQuest } = useQuests();
+  const { startQuest, completeQuest, quests } = useQuests();
+  const { state } = useGameState();
+  const completionCounts = state.questCompletionCounts ?? {};
   const config = QUEST_TYPE_CONFIG[quest.type] ?? QUEST_TYPE_CONFIG.normal;
+  const hasRequirements = quest.type === 'epic' && quest.requirements && quest.requirements.length > 0;
 
   return (
     <Card
@@ -58,21 +62,66 @@ export function QuestCard({ quest }: QuestCardProps) {
         </p>
       )}
 
+      {hasRequirements && quest.status !== 'completed' && (
+        <div className="space-y-2 mb-3">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
+            Requirements
+          </p>
+          {quest.requirements!.map(req => {
+            const subQuest = quests.find(q => q.id === req.questId);
+            const current = Math.min(completionCounts[req.questId] ?? 0, req.count);
+            return (
+              <div key={req.questId}>
+                <div className="flex justify-between items-center mb-0.5">
+                  <span className="font-body text-xs text-on-surface-variant truncate">
+                    {subQuest?.title ?? 'Unknown Quest'}
+                  </span>
+                  <span className="font-mono text-[10px] text-outline ml-2 shrink-0">
+                    {current}/{req.count}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={current}
+                  max={req.count}
+                  segments={Math.min(req.count, 20)}
+                  color="xp"
+                  size="sm"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex justify-end">
-        {quest.status === 'not_started' && (
-          <Button size="sm" variant="ghost" onClick={() => startQuest(quest.id)}>
-            ○ Start
-          </Button>
-        )}
-        {quest.status === 'in_progress' && (
-          <Button size="sm" variant="primary" onClick={() => completeQuest(quest.id)}>
-            ✓ Finish
-          </Button>
-        )}
-        {quest.status === 'completed' && (
-          <span className="font-mono text-xs text-primary flex items-center gap-1">
-            ✓✓ Completed
-          </span>
+        {hasRequirements ? (
+          quest.status === 'completed' ? (
+            <span className="font-mono text-xs text-primary flex items-center gap-1">
+              ✓✓ Epic Complete
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] text-outline">
+              Auto-completes when requirements are met
+            </span>
+          )
+        ) : (
+          <>
+            {quest.status === 'not_started' && (
+              <Button size="sm" variant="ghost" onClick={() => startQuest(quest.id)}>
+                ○ Start
+              </Button>
+            )}
+            {quest.status === 'in_progress' && (
+              <Button size="sm" variant="primary" onClick={() => completeQuest(quest.id)}>
+                ✓ Finish
+              </Button>
+            )}
+            {quest.status === 'completed' && (
+              <span className="font-mono text-xs text-primary flex items-center gap-1">
+                ✓✓ Completed
+              </span>
+            )}
+          </>
         )}
       </div>
     </Card>

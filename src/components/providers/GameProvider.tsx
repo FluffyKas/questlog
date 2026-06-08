@@ -126,6 +126,9 @@ function gameReducer(state: GameState, action: Action): GameState {
 
       const today = getTodayString(new Date(), state.settings.dailyResetHour);
 
+      const newCounts = { ...(state.questCompletionCounts ?? {}) };
+      newCounts[action.id] = (newCounts[action.id] ?? 0) + 1;
+
       const prevAch = state.achievements ?? DEFAULT_ACHIEVEMENT_PROGRESS;
       const newStats = { ...prevAch.stats };
       newStats.totalQuestsCompleted += 1;
@@ -158,16 +161,79 @@ function gameReducer(state: GameState, action: Action): GameState {
       }
       newHero = { ...newHero, gold: newHero.gold + achievementGold };
 
+      // Check for epic quests whose requirements are now fully met
+      const autoCompletedIds: string[] = [];
+      const epicCandidates = state.quests.filter(q =>
+        q.type === 'epic' &&
+        q.status !== 'completed' &&
+        q.requirements &&
+        q.requirements.length > 0 &&
+        q.requirements.every(req => (newCounts[req.questId] ?? 0) >= req.count)
+      );
+
+      for (const epic of epicCandidates) {
+        autoCompletedIds.push(epic.id);
+
+        const epicPerks = applyPerks(epic.reward, epic, st, SKILL_TREE_NODES);
+        const epicPrevLevel = newHero.level;
+        newHero = applyQuestReward(newHero, epicPerks.modifiedReward);
+        const epicMaxHp = calculateMaxHp(newHero.level, newHero.stats.con, maxHpBonus);
+        newHero = { ...newHero, maxHp: epicMaxHp, hp: Math.min(newHero.hp + epicPerks.bonusHp, epicMaxHp) };
+
+        log = addLog(log, createLogEntry(
+          `EPIC QUEST COMPLETE: "${epic.title}"! +${epicPerks.modifiedReward.xp} XP, +${epicPerks.modifiedReward.gold} Gold.`,
+          'quest_complete'
+        ));
+
+        if (checkLevelUp(epicPrevLevel, newHero.level)) {
+          log = addLog(log, createLogEntry(
+            `LEVEL UP! You are now Level ${newHero.level}!`,
+            'level_up'
+          ));
+        }
+
+        if (epic.category && epicPerks.branchXpEarned > 0) {
+          newBranchXp[epic.category] += epicPerks.branchXpEarned;
+        }
+
+        newStats.totalQuestsCompleted += 1;
+        newStats.mainQuestsCompleted += 1;
+        newStats.epicQuestsCompleted = (newStats.epicQuestsCompleted ?? 0) + 1;
+        newStats.completedEpicQuestTitles = [...(newStats.completedEpicQuestTitles ?? []), epic.title];
+        newStats.totalGoldEarned += epicPerks.modifiedReward.gold;
+        if (epic.category === 'mind') newStats.mindQuestsCompleted += 1;
+        if (epic.category === 'body') newStats.bodyQuestsCompleted += 1;
+        if (epic.category === 'hearth') newStats.hearthQuestsCompleted += 1;
+
+        const epicUnlocked = getNewlyUnlocked(updatedAchievements, newHero.level, newStreak, { ...st, branchXp: newBranchXp });
+        for (const ach of epicUnlocked) {
+          updatedAchievements.unlockedIds = [...updatedAchievements.unlockedIds, ach.id];
+          updatedAchievements.unlockedAt = { ...updatedAchievements.unlockedAt, [ach.id]: new Date().toISOString() };
+          if (ach.reward.gold) {
+            newHero = { ...newHero, gold: newHero.gold + ach.reward.gold };
+          }
+          log = addLog(log, createLogEntry(
+            `Achievement Unlocked: "${ach.name}"!${ach.reward.gold ? ` +${ach.reward.gold} Gold.` : ''}${ach.reward.title ? ` Title earned: "${ach.reward.title}".` : ''}`,
+            'system'
+          ));
+        }
+      }
+
       return {
         ...state,
         hero: newHero,
-        quests: state.quests.map(q =>
-          q.id === action.id
-            ? q.repeatable
+        quests: state.quests.map(q => {
+          if (q.id === action.id) {
+            return q.repeatable
               ? { ...q, status: 'not_started' as const, completedAt: new Date().toISOString(), startedAt: undefined, lastResetDate: today }
-              : { ...q, status: 'completed' as const, completedAt: new Date().toISOString(), lastResetDate: today }
-            : q
-        ),
+              : { ...q, status: 'completed' as const, completedAt: new Date().toISOString(), lastResetDate: today };
+          }
+          if (autoCompletedIds.includes(q.id)) {
+            return { ...q, status: 'completed' as const, completedAt: new Date().toISOString() };
+          }
+          return q;
+        }),
+        questCompletionCounts: newCounts,
         activityLog: log,
         skillTree: { ...st, branchXp: newBranchXp },
         achievements: updatedAchievements,
@@ -627,8 +693,24 @@ export function useQuests() {
           last_reset_date: today,
         });
       }
+
+      const counts = { ...(state.questCompletionCounts ?? {}) };
+      counts[id] = (counts[id] ?? 0) + 1;
+      const autoCompleted = state.quests.filter(q =>
+        q.type === 'epic' &&
+        q.status !== 'completed' &&
+        q.requirements &&
+        q.requirements.length > 0 &&
+        q.requirements.every(req => (counts[req.questId] ?? 0) >= req.count)
+      );
+      for (const epic of autoCompleted) {
+        upsertQuestProgress(userId, epic.id, {
+          status: 'completed',
+          completed_at: now,
+        });
+      }
     }
-  }, [dispatch, userId, state.quests, state.settings.dailyResetHour]);
+  }, [dispatch, userId, state.quests, state.settings.dailyResetHour, state.questCompletionCounts]);
 
   return {
     quests: state.quests,

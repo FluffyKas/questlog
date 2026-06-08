@@ -183,6 +183,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     reward: { gold: 75, title: 'Treasure Hunter' },
     condition: { kind: 'gold_earned', amount: 2000 },
   },
+
+  // Epic quests
+  {
+    id: 'epic_1',
+    name: 'Epic Saga',
+    description: 'Complete your first Epic Quest',
+    icon: '🏰',
+    rarity: 'rare',
+    reward: { gold: 100, title: 'Epic Adventurer' },
+    condition: { kind: 'epic_quest_complete', count: 1 },
+  },
+   {
+    id: 'epic_pixel_artist',
+    name: 'Mastering The Pixel Arts',
+    description: 'Finish the epic quest: Master Pixel Arts',
+    icon: '🎨',
+    rarity: 'epic',
+    reward: { gold: 100, title: 'Master Pixel Artist' },
+    condition: { kind: 'epic_quest_id_complete', questTitle: 'Master Pixel Arts' },
+  },
+  
 ];
 
 export const DEFAULT_ACHIEVEMENT_PROGRESS: AchievementProgress = {
@@ -197,6 +218,8 @@ export const DEFAULT_ACHIEVEMENT_PROGRESS: AchievementProgress = {
     bodyQuestsCompleted: 0,
     hearthQuestsCompleted: 0,
     totalGoldEarned: 0,
+    epicQuestsCompleted: 0,
+    completedEpicQuestTitles: [],
   },
 };
 
@@ -228,6 +251,10 @@ export function checkAchievement(
       if (c.category === 'body') return stats.bodyQuestsCompleted >= c.count;
       if (c.category === 'hearth') return stats.hearthQuestsCompleted >= c.count;
       return false;
+    case 'epic_quest_complete':
+      return stats.epicQuestsCompleted >= c.count;
+    case 'epic_quest_id_complete':
+      return (stats.completedEpicQuestTitles ?? []).includes(c.questTitle);
   }
 }
 
@@ -263,5 +290,9 @@ export function getProgress(def: AchievementDef, stats: AchievementStats, heroLe
       if (c.category === 'mind') return { current: stats.mindQuestsCompleted, target: c.count };
       if (c.category === 'body') return { current: stats.bodyQuestsCompleted, target: c.count };
       return { current: stats.hearthQuestsCompleted, target: c.count };
+    case 'epic_quest_complete':
+      return { current: stats.epicQuestsCompleted, target: c.count };
+    case 'epic_quest_id_complete':
+      return { current: (stats.completedEpicQuestTitles ?? []).includes(c.questTitle) ? 1 : 0, target: 1 };
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { type Quest, type QuestType, type QuestCategory, type StatName } from '@/lib/types';
+import { type Quest, type QuestType, type QuestCategory, type StatName, type EpicQuestRequirement } from '@/lib/types';
 import { useQuests, useGameState } from '@/components/providers/GameProvider';
 import { QUEST_TYPE_CONFIG, STAT_LABELS } from '@/lib/constants';
 import { Button } from '@/components/ui/Button';
@@ -42,8 +42,14 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   const [statBonus, setStatBonus] = useState<StatName | ''>('');
   const [statValue, setStatValue] = useState(0);
   const [isGlobal, setIsGlobal] = useState(existingQuest?.isGlobal ?? true);
+  const [requirements, setRequirements] = useState<EpicQuestRequirement[]>(
+    existingQuest?.requirements ?? []
+  );
   const [taskInput, setTaskInput] = useState('');
   const [generating, setGenerating] = useState(false);
+
+  const { state } = useGameState();
+  const availableQuests = state.quests.filter(q => q.type !== 'epic' && q.id !== existingQuest?.id);
 
   async function handleGenerate() {
     if (!taskInput.trim()) return;
@@ -79,6 +85,10 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
       stats: statBonus && statValue > 0 ? { [statBonus]: statValue } : undefined,
     };
 
+    const validRequirements = questType === 'epic'
+      ? requirements.filter(r => r.questId && r.count > 0)
+      : undefined;
+
     if (isEditing && existingQuest) {
       editQuest({
         ...existingQuest,
@@ -88,12 +98,13 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         type: questType,
         category: category || undefined,
         reward,
-        recurring,
-        repeatable,
+        recurring: validRequirements?.length ? false : recurring,
+        repeatable: validRequirements?.length ? false : repeatable,
         repeatIntervalDays: repeatIntervalDays || undefined,
         repeatTimeLimitDays: repeatTimeLimitDays || undefined,
         timerDays: timerDays || undefined,
         isGlobal,
+        requirements: validRequirements?.length ? validRequirements : undefined,
       });
     } else {
       addQuest({
@@ -103,12 +114,13 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         type: questType,
         category: category || undefined,
         reward,
-        recurring,
-        repeatable,
+        recurring: validRequirements?.length ? false : recurring,
+        repeatable: validRequirements?.length ? false : repeatable,
         repeatIntervalDays: repeatIntervalDays || undefined,
         repeatTimeLimitDays: repeatTimeLimitDays || undefined,
         timerDays: timerDays || undefined,
         isGlobal,
+        requirements: validRequirements?.length ? validRequirements : undefined,
       });
     }
 
@@ -183,6 +195,70 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         ]}
       />
 
+      {questType === 'epic' && (
+        <div className="border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
+          <label className="font-display text-xs uppercase tracking-wider text-primary block">
+            Requirements
+          </label>
+          <p className="font-mono text-[10px] text-outline">
+            Add sub-quests that must be completed to finish this epic quest.
+          </p>
+          {requirements.map((req, i) => (
+            <div key={i} className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Select
+                  label="Quest"
+                  value={req.questId}
+                  onChange={e => {
+                    const updated = [...requirements];
+                    updated[i] = { ...updated[i], questId: e.target.value };
+                    setRequirements(updated);
+                  }}
+                  options={[
+                    { value: '', label: 'Select a quest...' },
+                    ...availableQuests.map(q => ({ value: q.id, label: q.title })),
+                  ]}
+                />
+              </div>
+              <div className="w-24">
+                <Input
+                  label="Times"
+                  type="number"
+                  min={1}
+                  value={req.count}
+                  onChange={e => {
+                    const updated = [...requirements];
+                    updated[i] = { ...updated[i], count: Number(e.target.value) };
+                    setRequirements(updated);
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequirements(prev => prev.filter((_, idx) => idx !== i))}
+                className="text-error font-mono text-xs px-2 py-2 border-2 border-outline-variant
+                  hover:bg-error/10 cursor-pointer mb-[2px]"
+              >
+                X
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRequirements(prev => [...prev, { questId: '', count: 1 }])}
+            className="text-primary font-mono text-xs px-3 py-1 border-2 border-primary/30
+              hover:bg-primary/10 cursor-pointer"
+          >
+            + Add Requirement
+          </button>
+          {availableQuests.length === 0 && (
+            <p className="font-mono text-[10px] text-error">
+              No normal quests available. Create some normal quests first to use as requirements.
+            </p>
+          )}
+        </div>
+      )}
+
       <Select
         label="Skill Branch"
         value={category}
@@ -237,30 +313,32 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         )}
       </div>
 
-      <div className="space-y-2">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={recurring}
-            onChange={e => { setRecurring(e.target.checked); if (e.target.checked) { setRepeatable(false); setRepeatIntervalDays(0); } }}
-            className="w-5 h-5 accent-primary bg-surface-lowest"
-          />
-          <span className="font-mono text-xs uppercase text-on-surface-variant">
-            Daily (resets each morning)
-          </span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={repeatable}
-            onChange={e => { setRepeatable(e.target.checked); if (e.target.checked) { setRecurring(false); setRepeatIntervalDays(0); } }}
-            className="w-5 h-5 accent-primary bg-surface-lowest"
-          />
-          <span className="font-mono text-xs uppercase text-on-surface-variant">
-            Repeatable (available again after completing)
-          </span>
-        </label>
-      </div>
+      {!(questType === 'epic' && requirements.length > 0) && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={recurring}
+              onChange={e => { setRecurring(e.target.checked); if (e.target.checked) { setRepeatable(false); setRepeatIntervalDays(0); } }}
+              className="w-5 h-5 accent-primary bg-surface-lowest"
+            />
+            <span className="font-mono text-xs uppercase text-on-surface-variant">
+              Daily (resets each morning)
+            </span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={repeatable}
+              onChange={e => { setRepeatable(e.target.checked); if (e.target.checked) { setRecurring(false); setRepeatIntervalDays(0); } }}
+              className="w-5 h-5 accent-primary bg-surface-lowest"
+            />
+            <span className="font-mono text-xs uppercase text-on-surface-variant">
+              Repeatable (available again after completing)
+            </span>
+          </label>
+        </div>
+      )}
 
       {!recurring && !repeatable && (
         <div className="border-2 border-primary/30 bg-primary/5 p-4 space-y-3">

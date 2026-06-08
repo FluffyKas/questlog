@@ -51,6 +51,12 @@ export interface QuestReward {
   xp: number;
   gold: number;
   stats?: Partial<Record<StatName, number>>;
+  title?: string;
+}
+
+export interface EpicQuestRequirement {
+  questId: string;
+  count: number;
 }
 
 export interface Quest {
@@ -74,6 +80,7 @@ export interface Quest {
   repeatIntervalDays?: number;
   repeatTimeLimitDays?: number;
   lastResetDate?: string;
+  requirements?: EpicQuestRequirement[];
 }
 
 export interface HeroStats {
@@ -136,7 +143,9 @@ export type AchievementCondition =
   | { kind: 'level'; level: number }
   | { kind: 'gold_earned'; amount: number }
   | { kind: 'skill_unlocked'; count: number }
-  | { kind: 'category_quest_count'; category: QuestCategory; count: number };
+  | { kind: 'category_quest_count'; category: QuestCategory; count: number }
+  | { kind: 'epic_quest_complete'; count: number }
+  | { kind: 'epic_quest_id_complete'; questTitle: string };
 
 export interface AchievementDef {
   id: string;
@@ -157,6 +166,8 @@ export interface AchievementStats {
   bodyQuestsCompleted: number;
   hearthQuestsCompleted: number;
   totalGoldEarned: number;
+  epicQuestsCompleted: number;
+  completedEpicQuestTitles: string[];
 }
 
 export interface AchievementProgress {
@@ -173,6 +184,7 @@ export interface GameState {
   streak: StreakData;
   skillTree: SkillTreeState;
   achievements: AchievementProgress;
+  questCompletionCounts: Record<string, number>;
   settings: AppSettings;
   version: number;
 }

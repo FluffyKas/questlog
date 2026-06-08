@@ -2,7 +2,7 @@ import { type Hero, type AppSettings, type StreakData, type GameState, type Achi
 import { DEFAULT_ACHIEVEMENT_PROGRESS } from './achievements';
 
 export const STORAGE_KEY = 'questlog_state';
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5;
 export const MAX_LOG_ENTRIES = 100;
 export const MAX_LEVEL = 50;
 
@@ -148,6 +148,7 @@ export function createInitialState(): GameState {
     streak: { ...DEFAULT_STREAK },
     skillTree: { ...DEFAULT_SKILL_TREE, branchXp: { ...DEFAULT_SKILL_TREE.branchXp } },
     achievements: { ...DEFAULT_ACHIEVEMENT_PROGRESS, stats: { ...DEFAULT_ACHIEVEMENT_PROGRESS.stats } },
+    questCompletionCounts: {},
     settings: { ...DEFAULT_SETTINGS },
     version: STATE_VERSION,
   };
