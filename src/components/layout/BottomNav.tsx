@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,7 +8,6 @@ const navItems = [
   { href: '/quests', label: 'Quests', icon: '📜' },
   { href: '/skills', label: 'Skills', icon: '🌳' },
   { href: '/achievements', label: 'Trophies', icon: '🏆' },
-  { href: '/inventory', label: 'Items', icon: null },
 ];
 
 export function BottomNav() {
@@ -33,17 +31,7 @@ export function BottomNav() {
                 }
               `}
             >
-              {item.icon ? (
-                <span className="text-xl">{item.icon}</span>
-              ) : (
-                <Image
-                  src="/icons/inventory_chest.png"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="[image-rendering:pixelated]"
-                />
-              )}
+              <span className="text-xl">{item.icon}</span>
               <span className="font-mono text-[10px] uppercase">{item.label}</span>
             </Link>
           );

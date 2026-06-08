@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Space_Mono, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import './globals.css';
 
@@ -50,9 +51,11 @@ export default function RootLayout({
       className={`${spaceMono.variable} ${inter.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="min-h-full bg-surface text-on-surface font-body">
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,10 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useHero } from '@/components/providers/GameProvider';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 const navItems = [
@@ -12,18 +10,15 @@ const navItems = [
   { href: '/quests', label: 'Quests', icon: '📜' },
   { href: '/skills', label: 'Skills', icon: '🌳' },
   { href: '/achievements', label: 'Trophies', icon: '🏆' },
-  { href: '/character', label: 'Character', icon: '👤' },
-  { href: '/inventory', label: 'Inventory', icon: null },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { hero, xpPercent, xpIntoCurrentLevel, xpForCurrentLevel } = useHero();
-  const { logout } = useAuth();
 
   return (
     <aside className="hidden md:flex flex-col w-60 border-r-2 border-outline-variant bg-surface-low min-h-dvh">
-      <div className="p-4 border-b-2 border-outline-variant">
+      <Link href="/character" className="block p-4 border-b-2 border-outline-variant hover:bg-surface-high transition-colors">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bevel bg-surface-high flex items-center justify-center text-2xl">
             ⚔
@@ -42,7 +37,7 @@ export function Sidebar() {
           size="sm"
           className="mt-2"
         />
-      </div>
+      </Link>
 
       <nav className="flex-1 py-2">
         {navItems.map(item => {
@@ -60,24 +55,14 @@ export function Sidebar() {
                 }
               `}
             >
-              {item.icon ? (
-                <span className="text-base">{item.icon}</span>
-              ) : (
-                <Image
-                  src="/icons/inventory_chest.png"
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="[image-rendering:pixelated]"
-                />
-              )}
+              <span className="text-base">{item.icon}</span>
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-3 space-y-2">
+      <div className="p-3">
         <Link
           href="/quests/new"
           className="block w-full px-4 py-3 bg-primary text-on-primary font-display text-xs
@@ -88,14 +73,6 @@ export function Sidebar() {
         >
           + New Quest
         </Link>
-        <button
-          onClick={() => logout()}
-          className="block w-full px-4 py-2 font-mono text-[10px] uppercase tracking-wider
-            text-center text-outline hover:text-on-surface-variant cursor-pointer
-            border-2 border-outline-variant hover:bg-surface-high transition-colors"
-        >
-          Logout
-        </button>
       </div>
     </aside>
   );

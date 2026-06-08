@@ -9,7 +9,7 @@ export function Header() {
         QuestLog
       </Link>
       <div className="flex items-center gap-3">
-        <Link href="/character" className="text-outline hover:text-on-surface text-xl">
+        <Link href="/profile" className="text-outline hover:text-on-surface text-xl">
           👤
         </Link>
       </div>
