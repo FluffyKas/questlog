@@ -212,9 +212,8 @@ export function checkAchievement(
     case 'quest_count':
       return stats.totalQuestsCompleted >= c.count;
     case 'quest_type_count':
-      if (c.questType === 'main') return stats.mainQuestsCompleted >= c.count;
-      if (c.questType === 'daily') return stats.dailyQuestsCompleted >= c.count;
-      if (c.questType === 'side') return stats.sideQuestsCompleted >= c.count;
+      if (c.questType === 'epic') return stats.mainQuestsCompleted >= c.count;
+      if (c.questType === 'normal') return stats.dailyQuestsCompleted >= c.count;
       return false;
     case 'streak':
       return streak >= c.days;
@@ -250,9 +249,8 @@ export function getProgress(def: AchievementDef, stats: AchievementStats, heroLe
     case 'quest_count':
       return { current: stats.totalQuestsCompleted, target: c.count };
     case 'quest_type_count':
-      if (c.questType === 'main') return { current: stats.mainQuestsCompleted, target: c.count };
-      if (c.questType === 'daily') return { current: stats.dailyQuestsCompleted, target: c.count };
-      return { current: stats.sideQuestsCompleted, target: c.count };
+      if (c.questType === 'epic') return { current: stats.mainQuestsCompleted, target: c.count };
+      return { current: stats.dailyQuestsCompleted, target: c.count };
     case 'streak':
       return { current: streak, target: c.days };
     case 'level':

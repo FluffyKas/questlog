@@ -320,5 +320,17 @@ function migrateState(state: GameState): GameState {
     };
   }
 
+  if (!migrated.version || migrated.version < 4) {
+    const typeMap: Record<string, string> = { main: 'epic', daily: 'normal', side: 'normal' };
+    migrated = {
+      ...migrated,
+      quests: migrated.quests.map(q => ({
+        ...q,
+        type: (typeMap[q.type] ?? q.type) as GameState['quests'][number]['type'],
+      })),
+      version: 4,
+    };
+  }
+
   return migrated;
 }

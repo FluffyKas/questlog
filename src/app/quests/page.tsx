@@ -16,9 +16,8 @@ export default function QuestsPage() {
 
   const typeFilters: { value: TypeFilter; label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'main', label: 'Main' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'side', label: 'Side' },
+    { value: 'epic', label: 'Epic' },
+    { value: 'normal', label: 'Normal' },
     { value: 'completed', label: 'Done' },
   ];
 

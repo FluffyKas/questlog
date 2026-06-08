@@ -30,9 +30,9 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
   const [title, setTitle] = useState(existingQuest?.title ?? '');
   const [description, setDescription] = useState(existingQuest?.description ?? '');
   const [flavorText, setFlavorText] = useState(existingQuest?.flavorText ?? '');
-  const [questType, setQuestType] = useState<QuestType>(existingQuest?.type ?? 'daily');
-  const [xp, setXp] = useState(existingQuest?.reward.xp ?? QUEST_TYPE_CONFIG.daily.defaultXp);
-  const [gold, setGold] = useState(existingQuest?.reward.gold ?? QUEST_TYPE_CONFIG.daily.defaultGold);
+  const [questType, setQuestType] = useState<QuestType>(existingQuest?.type ?? 'normal');
+  const [xp, setXp] = useState(existingQuest?.reward.xp ?? QUEST_TYPE_CONFIG.normal.defaultXp);
+  const [gold, setGold] = useState(existingQuest?.reward.gold ?? QUEST_TYPE_CONFIG.normal.defaultGold);
   const [recurring, setRecurring] = useState(existingQuest?.recurring ?? false);
   const [repeatable, setRepeatable] = useState(existingQuest?.repeatable ?? false);
   const [repeatIntervalDays, setRepeatIntervalDays] = useState(existingQuest?.repeatIntervalDays ?? 0);
@@ -65,7 +65,7 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
     if (!isEditing) {
       setXp(QUEST_TYPE_CONFIG[type].defaultXp);
       setGold(QUEST_TYPE_CONFIG[type].defaultGold);
-      setRecurring(type === 'daily');
+      setRecurring(false);
     }
   }
 
@@ -178,9 +178,8 @@ export function QuestForm({ existingQuest }: QuestFormProps) {
         value={questType}
         onChange={e => handleTypeChange(e.target.value as QuestType)}
         options={[
-          { value: 'main', label: 'Main Quest' },
-          { value: 'daily', label: 'Daily Grind' },
-          { value: 'side', label: 'Side Quest' },
+          { value: 'epic', label: 'Epic Quest' },
+          { value: 'normal', label: 'Normal Quest' },
         ]}
       />
 

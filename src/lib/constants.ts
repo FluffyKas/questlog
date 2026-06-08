@@ -2,7 +2,7 @@ import { type Hero, type AppSettings, type StreakData, type GameState, type Achi
 import { DEFAULT_ACHIEVEMENT_PROGRESS } from './achievements';
 
 export const STORAGE_KEY = 'questlog_state';
-export const STATE_VERSION = 3;
+export const STATE_VERSION = 4;
 export const MAX_LOG_ENTRIES = 100;
 export const MAX_LEVEL = 50;
 
@@ -16,9 +16,8 @@ export const STAT_LABELS: Record<string, string> = {
 };
 
 export const QUEST_TYPE_CONFIG: Record<QuestType, { label: string; defaultXp: number; defaultGold: number }> = {
-  main: { label: 'Main Quest', defaultXp: 100, defaultGold: 30 },
-  daily: { label: 'Daily Grind', defaultXp: 25, defaultGold: 10 },
-  side: { label: 'Side Quest', defaultXp: 50, defaultGold: 15 },
+  epic: { label: 'Epic Quest', defaultXp: 200, defaultGold: 30 },
+  normal: { label: 'Normal Quest', defaultXp: 10, defaultGold: 15 },
 };
 
 export const QUEST_CATEGORY_CONFIG: Record<QuestCategory, { label: string; color: string; icon: string }> = {
@@ -114,7 +113,7 @@ export function getNodeById(id: SkillNodeId): SkillNode | undefined {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   dailyResetHour: 4,
-  hpDecayEnabled: true,
+  hpDecayEnabled: false,
   soundEnabled: true,
 };
 

@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
 
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -70,20 +72,42 @@ export default function ProfilePage() {
         <h3 className="font-display text-sm uppercase tracking-wider text-on-surface-variant mb-4">
           Change Password
         </h3>
-        <div className="flex gap-2">
+        <div className="space-y-2">
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="New password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 pr-10 bg-surface-lowest border-2 border-outline-variant
+                font-body text-sm text-on-surface placeholder:text-outline
+                focus:outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface-variant
+                cursor-pointer text-sm px-1"
+            >
+              {showPassword ? '◉' : '◎'}
+            </button>
+          </div>
           <input
-            type="password"
-            placeholder="New password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            className="flex-1 px-3 py-2 bg-surface-lowest border-2 border-outline-variant
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            className="w-full px-3 py-2 bg-surface-lowest border-2 border-outline-variant
               font-body text-sm text-on-surface placeholder:text-outline
               focus:outline-none focus:border-primary"
           />
+          {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+            <p className="font-mono text-[10px] text-error">Passwords do not match</p>
+          )}
           <Button
             size="sm"
             variant="ghost"
-            disabled={changingPassword || newPassword.length < 6}
+            disabled={changingPassword || newPassword.length < 6 || newPassword !== confirmPassword}
             onClick={async () => {
               setChangingPassword(true);
               setPasswordMsg(null);
@@ -93,6 +117,7 @@ export default function ProfilePage() {
               } else {
                 setPasswordMsg({ text: 'Password updated!', error: false });
                 setNewPassword('');
+                setConfirmPassword('');
               }
               setChangingPassword(false);
             }}

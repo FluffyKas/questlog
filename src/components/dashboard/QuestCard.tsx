@@ -13,19 +13,18 @@ interface QuestCardProps {
 }
 
 const typeToRibbon: Record<string, 'primary' | 'secondary' | 'tertiary'> = {
-  main: 'primary',
-  daily: 'secondary',
-  side: 'tertiary',
+  epic: 'primary',
+  normal: 'secondary',
 };
 
 export function QuestCard({ quest }: QuestCardProps) {
   const { startQuest, completeQuest } = useQuests();
-  const config = QUEST_TYPE_CONFIG[quest.type];
+  const config = QUEST_TYPE_CONFIG[quest.type] ?? QUEST_TYPE_CONFIG.normal;
 
   return (
     <Card
       ribbonTitle={config.label}
-      ribbonVariant={typeToRibbon[quest.type]}
+      ribbonVariant={typeToRibbon[quest.type] ?? 'secondary'}
     >
       <h3 className="font-display text-sm text-on-surface mb-1">{quest.title}</h3>
       {quest.description && (

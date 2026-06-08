@@ -1,4 +1,4 @@
-export type QuestType = 'main' | 'daily' | 'side';
+export type QuestType = 'epic' | 'normal';
 export type QuestStatus = 'not_started' | 'in_progress' | 'completed';
 export type StatName = 'str' | 'int' | 'wis' | 'dex' | 'cha' | 'con';
 export type QuestCategory = 'mind' | 'body' | 'hearth';

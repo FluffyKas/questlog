@@ -103,7 +103,7 @@ export function applyPerks(
         if (quest.category === perk.branch) xpMultiplier += perk.multiplier;
         break;
       case 'bonus_gold_daily':
-        if (quest.category === perk.branch && quest.type === 'daily') bonusGold += perk.amount;
+        if (quest.category === perk.branch && quest.recurring) bonusGold += perk.amount;
         break;
       case 'bonus_hp_on_complete':
         if (quest.category === perk.branch) bonusHp += perk.amount;
@@ -117,10 +117,10 @@ export function applyPerks(
           bonusHp += perk.amount;
         break;
       case 'double_gold_main':
-        if (quest.category === perk.branch && quest.type === 'main') bonusGold += baseReward.gold;
+        if (quest.category === perk.branch && quest.type === 'epic') bonusGold += baseReward.gold;
         break;
       case 'double_gold_daily':
-        if (quest.category === perk.branch && quest.type === 'daily') bonusGold += baseReward.gold;
+        if (quest.category === perk.branch && quest.recurring) bonusGold += baseReward.gold;
         break;
       case 'global_xp_multiplier':
         xpMultiplier += perk.multiplier;

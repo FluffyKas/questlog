@@ -129,9 +129,8 @@ function gameReducer(state: GameState, action: Action): GameState {
       const prevAch = state.achievements ?? DEFAULT_ACHIEVEMENT_PROGRESS;
       const newStats = { ...prevAch.stats };
       newStats.totalQuestsCompleted += 1;
-      if (quest.type === 'main') newStats.mainQuestsCompleted += 1;
-      if (quest.type === 'daily') newStats.dailyQuestsCompleted += 1;
-      if (quest.type === 'side') newStats.sideQuestsCompleted += 1;
+      if (quest.type === 'epic') newStats.mainQuestsCompleted += 1;
+      if (quest.recurring) newStats.dailyQuestsCompleted += 1;
       if (quest.category === 'mind') newStats.mindQuestsCompleted += 1;
       if (quest.category === 'body') newStats.bodyQuestsCompleted += 1;
       if (quest.category === 'hearth') newStats.hearthQuestsCompleted += 1;

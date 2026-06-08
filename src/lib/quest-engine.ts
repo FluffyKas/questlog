@@ -9,7 +9,7 @@ function getDateString(date: Date, resetHour: number): string {
 }
 
 export function shouldResetDaily(quest: Quest, now: Date, resetHour: number): boolean {
-  if (!quest.recurring || quest.type !== 'daily') return false;
+  if (!quest.recurring) return false;
   const today = getDateString(now, resetHour);
   return quest.lastResetDate !== today;
 }
@@ -25,11 +25,11 @@ export function resetDailyQuest(quest: Quest, now: Date, resetHour: number): Que
 }
 
 export function getActiveQuests(quests: Quest[]): Quest[] {
-  return quests.filter(q => q.status !== 'completed' || (q.recurring && q.type === 'daily'));
+  return quests.filter(q => q.status !== 'completed' || (q.recurring && q.recurring));
 }
 
 export function getCompletedQuests(quests: Quest[]): Quest[] {
-  return quests.filter(q => q.status === 'completed' && !(q.recurring && q.type === 'daily'));
+  return quests.filter(q => q.status === 'completed' && !(q.recurring && q.recurring));
 }
 
 export function getMissedDailies(quests: Quest[], now: Date, resetHour: number): Quest[] {
@@ -39,7 +39,7 @@ export function getMissedDailies(quests: Quest[], now: Date, resetHour: number):
 
   return quests.filter(q =>
     q.recurring &&
-    q.type === 'daily' &&
+    q.recurring &&
     q.lastResetDate === yesterdayStr &&
     q.status !== 'completed'
   );
